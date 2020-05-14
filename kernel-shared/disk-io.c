@@ -154,6 +154,10 @@ int btrfs_csum_data(struct btrfs_fs_info *fs_info, u16 csum_type, const u8 *data
 		return hash_sha256(data, len, out);
 	case BTRFS_CSUM_TYPE_BLAKE2:
 		return hash_blake2b(data, len, out);
+	case BTRFS_CSUM_TYPE_HMAC_SHA256:
+		if (!fs_info || !fs_info->auth_key)
+			return 0;
+		return hash_hmac_sha256(fs_info, data, len, out);
 	default:
 		fprintf(stderr, "ERROR: unknown csum type: %d\n", csum_type);
 		ASSERT(0);
@@ -1233,6 +1237,7 @@ static struct btrfs_fs_info *__open_ctree_fd(int fp, struct open_ctree_flags *oc
 		fprintf(stderr, "Failed to allocate memory for fs_info\n");
 		return NULL;
 	}
+	fs_info->auth_key = ocf->auth_key;
 	if (flags & OPEN_CTREE_RESTORE)
 		fs_info->on_restoring = 1;
 	if (flags & OPEN_CTREE_SUPPRESS_CHECK_BLOCK_ERRORS)
@@ -1459,7 +1464,8 @@ int btrfs_check_super(struct btrfs_super_block *sb, unsigned sbflags)
 	btrfs_csum_data(NULL, csum_type, (u8 *)sb + BTRFS_CSUM_SIZE,
 			result, BTRFS_SUPER_INFO_SIZE - BTRFS_CSUM_SIZE);
 
-	if (memcmp(result, sb->csum, csum_size)) {
+	if (memcmp(result, sb->csum, csum_size) != 0 &&
+	    csum_type != BTRFS_CSUM_TYPE_HMAC_SHA256) {
 		error("superblock checksum mismatch");
 		return -EIO;
 	}

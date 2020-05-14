@@ -352,6 +352,7 @@ static void print_usage(int ret)
 	printf("  features:\n");
 	printf("\t--csum TYPE\n");
 	printf("\t--checksum TYPE             checksum algorithm to use, crc32c (default), xxhash, sha256, blake2\n");
+	printf("\t--auth-key KEY              authentication key to use for authenticated file-systems\n");
 	printf("\t-n|--nodesize SIZE          size of btree nodes\n");
 	printf("\t-s|--sectorsize SIZE        data block size (may not be mountable by current kernel)\n");
 	printf("\t-O|--features LIST          comma separated list of filesystem features (use '-O list-all' to list features)\n");
@@ -925,13 +926,19 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 	struct btrfs_mkfs_config mkfs_cfg;
 	enum btrfs_csum_type csum_type = BTRFS_CSUM_TYPE_CRC32;
 	u64 system_group_size;
+	char *auth_key = NULL;
 
 	crc32c_optimization_init();
 
 	while(1) {
 		int c;
-		enum { GETOPT_VAL_SHRINK = 257, GETOPT_VAL_CHECKSUM };
+		enum {
+			GETOPT_VAL_SHRINK = 257,
+			GETOPT_VAL_CHECKSUM,
+			GETOPT_VAL_AUTHKEY,
+		};
 		static const struct option long_options[] = {
+			{ "auth-key", required_argument, NULL, GETOPT_VAL_AUTHKEY },
 			{ "byte-count", required_argument, NULL, 'b' },
 			{ "csum", required_argument, NULL,
 				GETOPT_VAL_CHECKSUM },
@@ -1054,6 +1061,9 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 			case GETOPT_VAL_CHECKSUM:
 				csum_type = parse_csum_type(optarg);
 				break;
+			case GETOPT_VAL_AUTHKEY:
+				auth_key = strdup(optarg);
+				break;
 			case GETOPT_VAL_HELP:
 			default:
 				print_usage(c != GETOPT_VAL_HELP);
@@ -1087,6 +1097,12 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 	}
 	if (shrink_rootdir && !source_dir_set) {
 		error("the option --shrink must be used with --rootdir");
+		goto error;
+	}
+
+	if ((auth_key && csum_type != BTRFS_CSUM_TYPE_HMAC_SHA256) ||
+	    (csum_type == BTRFS_CSUM_TYPE_HMAC_SHA256 && !auth_key)) {
+		error("the option --auth-key must be used with --csum hmac(sha256)");
 		goto error;
 	}
 
@@ -1373,6 +1389,7 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 	mkfs_cfg.features = features;
 	mkfs_cfg.csum_type = csum_type;
 	mkfs_cfg.zone_size = zone_size(file);
+	mkfs_cfg.auth_key = auth_key;
 
 	ret = make_btrfs(fd, &mkfs_cfg);
 	if (ret) {
@@ -1381,6 +1398,7 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 		goto error;
 	}
 
+	ocf.auth_key = auth_key;
 	ocf.filename = file;
 	ocf.flags = OPEN_CTREE_WRITES | OPEN_CTREE_TEMPORARY_SUPER;
 	fs_info = open_ctree_fs_info(&ocf);
@@ -1610,6 +1628,7 @@ out:
 
 	btrfs_close_all_devices();
 	free(label);
+	free(auth_key);
 
 	return !!ret;
 error:
@@ -1617,6 +1636,7 @@ error:
 		close(fd);
 
 	free(label);
+	free(auth_key);
 	exit(1);
 success:
 	exit(0);

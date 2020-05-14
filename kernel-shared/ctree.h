@@ -172,6 +172,7 @@ enum btrfs_csum_type {
 	BTRFS_CSUM_TYPE_XXHASH		= 1,
 	BTRFS_CSUM_TYPE_SHA256		= 2,
 	BTRFS_CSUM_TYPE_BLAKE2		= 3,
+	BTRFS_CSUM_TYPE_HMAC_SHA256	= 4,
 };
 
 #define BTRFS_EMPTY_DIR_SIZE 0
@@ -1220,6 +1221,7 @@ struct btrfs_fs_info {
 	u32 nodesize;
 	u32 sectorsize;
 	u32 stripesize;
+	char *auth_key;
 
 	/*
 	 * Zone size > 0 when in ZONED mode, otherwise it's used for a check
