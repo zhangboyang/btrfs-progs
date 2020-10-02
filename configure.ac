@@ -328,7 +328,9 @@ libbtrfsutil/libbtrfsutil.pc
 AC_OUTPUT
 
 AC_MSG_RESULT([
-	${PACKAGE_NAME} ${PACKAGE_VERSION}
+	btrfs-progs:        ${PACKAGE_VERSION}
+	libbtrfs:           ${LIBBTRFS_MAJOR}.${LIBBTRFS_MINOR}.${LIBBTRFS_PATCHLEVEL} (deprecated)
+	libbtrfsutil:       ${BTRFS_UTIL_VERSION_MAJOR}.${BTRFS_UTIL_VERSION_MINOR}.${BTRFS_UTIL_VERSION_PATCH}
 
 	prefix:             ${prefix}
 	exec prefix:        ${exec_prefix}
