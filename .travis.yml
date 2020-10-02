@@ -23,6 +23,10 @@ compiler:
   - gcc
   - clang
 
+env:
+  - D=asan
+  - D=ubsan
+
 cache:
   ccache: true
   directories:

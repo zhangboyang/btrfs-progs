@@ -10,4 +10,4 @@ set -e
 
 ./autogen.sh
 ./configure "$@"
-make V=1 D=asan
+make V=1
