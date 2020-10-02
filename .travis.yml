@@ -32,6 +32,12 @@ matrix:
       env: D=ubsan
     - os: linux
       compiler: clang
+    - os: linux
+      compiler: clang
+      env: D=asan
+    - os: linux
+      compiler: clang
+      env: D=ubsan
 
 cache:
   ccache: true
