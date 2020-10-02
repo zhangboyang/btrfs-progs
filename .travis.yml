@@ -19,13 +19,19 @@
 sudo: required
 
 language: c
-compiler:
-  - gcc
-  - clang
 
-env:
-  - D=asan
-  - D=ubsan
+matrix:
+  include:
+    - os: linux
+      compiler: gcc
+    - os: linux
+      compiler: gcc
+      env: D=asan
+    - os: linux
+      compiler: gcc
+      env: D=ubsan
+    - os: linux
+      compiler: clang
 
 cache:
   ccache: true
