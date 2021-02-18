@@ -161,6 +161,8 @@ int main(int argc, char **argv) {
 	struct contestant {
 		char name[16];
 		int (*digest)(const u8 *buf, size_t length, u8 *out);
+		int (*authdigest)(const u8 *buf, size_t length, u8 *out,
+				  const u8 *key, size_t keylen);
 		int digest_size;
 		u64 cycles;
 		u64 time;
@@ -171,6 +173,7 @@ int main(int argc, char **argv) {
 		{ .name = "XXHASH", .digest = hash_xxhash, .digest_size = 8 },
 		{ .name = "SHA256", .digest = hash_sha256, .digest_size = 32 },
 		{ .name = "BLAKE2", .digest = hash_blake2b, .digest_size = 32 },
+		{ .name = "AUTH-SHA256", .authdigest = hash_auth_sha256, .digest_size = 32 },
 	};
 	int units = UNITS_CYCLES;
 
@@ -246,6 +249,34 @@ int main(int argc, char **argv) {
 		}
 		end = get_cycles(units);
 		tend = get_time();
+#if 0
+		if (strstr(c->name, "AUTH")) {
+			u8 key[CRYPTO_HASH_SIZE_MAX];
+
+			for (iter = 0; iter < sizeof(key); iter++)
+				key[iter] = iter & 0xFF;
+			tstart = get_time();
+			start = get_cycles();
+			for (iter = 0; iter < iterations; iter++) {
+				memset(buf, iter & 0xFF, blocksize);
+				memset(hash, 0, 32);
+				c->authdigest(buf, blocksize, hash,
+					      key, CRYPTO_HASH_SIZE_MAX);
+			}
+			end = get_cycles();
+			tend = get_time();
+		} else {
+			tstart = get_time();
+			start = get_cycles();
+			for (iter = 0; iter < iterations; iter++) {
+				memset(buf, iter & 0xFF, blocksize);
+				memset(hash, 0, 32);
+				c->digest(buf, blocksize, hash);
+			}
+			end = get_cycles();
+			tend = get_time();
+		}
+#endif
 		c->cycles = end - start;
 		c->time = tend - tstart;
 
