@@ -54,6 +54,18 @@ int hash_blake2b(const u8 *buf, size_t len, u8 *out)
 	return 0;
 }
 
+int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
+		     const u8 *key, size_t keylen)
+{
+	HMACContext context;
+
+	hmacReset(&context, SHA256, key, keylen);
+	hmacInput(&context, buf, length);
+	hmacResult(&context, out);
+
+	return 0;
+}
+
 #endif
 
 #if CRYPTOPROVIDER_LIBGCRYPT == 1
