@@ -11,5 +11,7 @@ int hash_sha256(const u8 *buf, size_t length, u8 *out);
 int hash_blake2b(const u8 *buf, size_t length, u8 *out);
 int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
 		     const u8 *key, size_t keylen);
+int hash_auth_blake2b(const u8 *buf, size_t length, u8 *out,
+		      const u8 *key, size_t keylen);
 
 #endif

@@ -66,6 +66,18 @@ int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
 	return 0;
 }
 
+int hash_auth_blake2b(const u8 *buf, size_t length, u8 *out,
+		      const u8 *key, size_t keylen)
+{
+	blake2b_state S;
+
+	blake2b_init_key(&S, CRYPTO_HASH_SIZE_MAX, key, keylen);
+	blake2b_update(&S, buf, length);
+	blake2b_final(&S, out, CRYPTO_HASH_SIZE_MAX);
+
+	return 0;
+}
+
 #endif
 
 #if CRYPTOPROVIDER_LIBGCRYPT == 1
@@ -99,6 +111,23 @@ int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
 	return 0;
 }
 
+int hash_auth_blake2b(const u8 *buf, size_t length, u8 *out,
+		      const u8 *key, size_t keylen)
+{
+	gcry_md_hd_t md;
+	void *digest;
+
+	/* Use digest with a key and not the HMAC API, results are not equal  */
+	gcry_md_open(&md, GCRY_MD_BLAKE2B_256, 0);
+	gcry_md_setkey(md, key, keylen);
+	gcry_md_write(md, buf, length);
+	digest = gcry_md_read(md, GCRY_MD_BLAKE2B_256);
+	memcpy(out, digest, CRYPTO_HASH_SIZE_MAX);
+	gcry_md_close(md);
+
+	return 0;
+}
+
 #endif
 
 #if CRYPTOPROVIDER_LIBSODIUM == 1
@@ -128,6 +157,13 @@ int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
 	crypto_auth_hmacsha256_final(&state, out);
 
 	return 0;
+}
+
+int hash_auth_blake2b(const u8 *buf, size_t length, u8 *out,
+		      const u8 *key, size_t keylen)
+{
+	return crypto_generichash_blake2b(out, CRYPTO_HASH_SIZE_MAX, buf, length,
+			key, keylen);
 }
 
 #endif
@@ -186,6 +222,30 @@ int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
 	 * in case it's called with different keys.
 	 */
 	ret = kcapi_md_hmac_sha256(key, keylen, buf, length, out, CRYPTO_HASH_SIZE_MAX);
+
+	return ret;
+}
+
+int hash_auth_blake2b(const u8 *buf, size_t length, u8 *out,
+		      const u8 *key, size_t keylen)
+{
+	struct kcapi_handle *handle;
+	int ret;
+
+	/*
+	 * This is slow as it needs to open a connection each time but is safe
+	 * in case it's called with different keys.
+	 */
+	ret = kcapi_md_init(&handle, "blake2b-256", 0);
+	if (ret < 0) {
+		fprintf(stderr,
+			"HASH: cannot instantiate blake2b-256, error %d\n",
+			ret);
+		exit(1);
+	}
+	ret = kcapi_md_setkey(handle, key, keylen);
+	ret = kcapi_md_digest(handle, buf, length, out, CRYPTO_HASH_SIZE_MAX);
+	kcapi_md_destroy(handle);
 
 	return ret;
 }

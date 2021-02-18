@@ -174,6 +174,7 @@ int main(int argc, char **argv) {
 		{ .name = "SHA256", .digest = hash_sha256, .digest_size = 32 },
 		{ .name = "BLAKE2", .digest = hash_blake2b, .digest_size = 32 },
 		{ .name = "AUTH-SHA256", .authdigest = hash_auth_sha256, .digest_size = 32 },
+		{ .name = "AUTH-BLAKE2b", .authdigest = hash_auth_blake2b, .digest_size = 32 },
 	};
 	int units = UNITS_CYCLES;
 
