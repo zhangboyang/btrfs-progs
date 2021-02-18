@@ -176,4 +176,18 @@ int hash_blake2b(const u8 *buf, size_t len, u8 *out)
 	return ret;
 }
 
+int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
+		     const u8 *key, size_t keylen)
+{
+	int ret;
+
+	/*
+	 * This is slow as it needs to open a connection each time but is safe
+	 * in case it's called with different keys.
+	 */
+	ret = kcapi_md_hmac_sha256(key, keylen, buf, length, out, CRYPTO_HASH_SIZE_MAX);
+
+	return ret;
+}
+
 #endif
