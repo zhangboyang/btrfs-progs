@@ -1,5 +1,3 @@
-#include "kernel-shared/ctree.h"
-
 #include "crypto/hash.h"
 #include "crypto/crc32c.h"
 #include "crypto/xxhash.h"
@@ -74,13 +72,13 @@ int hash_blake2b(const u8 *buf, size_t len, u8 *out)
 	return 0;
 }
 
-int hash_hmac_sha256(struct btrfs_fs_info *fs_info, const u8 *buf,
-		     size_t length, u8 *out)
+int hash_hmac_sha256(const u8 *buf, size_t length, u8 *out,
+		     const u8 *key, size_t keylen)
 {
 	gcry_mac_hd_t mac;
 
 	gcry_mac_open(&mac, GCRY_MAC_HMAC_SHA256, 0, NULL);
-	gcry_mac_setkey(mac, fs_info->auth_key, strlen(fs_info->auth_key));
+	gcry_mac_setkey(mac, key, keylen);
 	gcry_mac_write(mac, buf, length);
 	length = CRYPTO_HASH_SIZE_MAX;
 	gcry_mac_read(mac, out, &length);
@@ -108,13 +106,12 @@ int hash_blake2b(const u8 *buf, size_t len, u8 *out)
 			NULL, 0);
 }
 
-int hash_hmac_sha256(struct btrfs_fs_info *fs_info, const u8 *buf,
-		     size_t length, u8 *out)
+int hash_hmac_sha256(const u8 *buf, size_t length, u8 *out,
+		     const u8 *key, size_t keylen)
 {
 	crypto_auth_hmacsha256_state state;
 
-	crypto_auth_hmacsha256_init(&state, (unsigned char *)fs_info->auth_key,
-				    strlen(fs_info->auth_key));
+	crypto_auth_hmacsha256_init(&state, (unsigned char *)key, keylen);
 	crypto_auth_hmacsha256_update(&state, buf, length);
 	crypto_auth_hmacsha256_final(&state, out);
 
