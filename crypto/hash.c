@@ -57,11 +57,11 @@ int hash_blake2b(const u8 *buf, size_t len, u8 *out)
 int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
 		     const u8 *key, size_t keylen)
 {
-	HMACContext context;
+	HMAC256Context context;
 
-	hmacReset(&context, SHA256, key, keylen);
-	hmacInput(&context, buf, length);
-	hmacResult(&context, out);
+	hmac256Reset(&context, key, keylen);
+	hmac256Input(&context, buf, length);
+	hmac256Result(&context, out);
 
 	return 0;
 }

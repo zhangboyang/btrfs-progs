@@ -104,22 +104,12 @@ enum {
 enum {
     SHA224_Message_Block_Size = 64,
     SHA256_Message_Block_Size = 64,
-    USHA_Max_Message_Block_Size = SHA256_Message_Block_Size,
 
     SHA224HashSize = 28, SHA256HashSize = 32,
-    USHAMaxHashSize = SHA256HashSize,
 
     SHA224HashSizeBits = 224,
     SHA256HashSizeBits = 256,
-    USHAMaxHashSizeBits = SHA256HashSizeBits
 };
-
-/*
- *  These constants are used in the USHA (Unified SHA) functions.
- */
-typedef enum SHAversion {
-    SHA224, SHA256,
-} SHAversion;
 
 /*
  *  This structure will hold context information for the SHA-256
@@ -147,31 +137,20 @@ typedef struct SHA256Context {
 typedef struct SHA256Context SHA224Context;
 
 /*
- *  This structure holds context information for all SHA
- *  hashing operations.
- */
-typedef struct USHAContext {
-    int whichSha;               /* which SHA is being used */
-    union {
-      SHA224Context sha224Context; SHA256Context sha256Context;
-    } ctx;
-} USHAContext;
-
-/*
  *  This structure will hold context information for the HMAC
  *  keyed-hashing operation.
  */
-typedef struct HMACContext {
+typedef struct HMAC256Context {
     int whichSha;               /* which SHA is being used */
     int hashSize;               /* hash size of SHA being used */
     int blockSize;              /* block size of SHA being used */
-    USHAContext shaContext;     /* SHA context */
-    unsigned char k_opad[USHA_Max_Message_Block_Size];
+    SHA256Context shaContext;   /* SHA256 context */
+    unsigned char k_opad[SHA256_Message_Block_Size];
                         /* outer padding - key XORd with opad */
     int Computed;               /* Is the MAC computed? */
     int Corrupted;              /* Cumulative corruption code */
 
-} HMACContext;
+} HMAC256Context;
 
 /*
  *  Function Prototypes
@@ -200,13 +179,10 @@ extern int SHA256Result(SHA256Context *,
  * for all SHAs.
  * This interface allows any length of text input to be used.
  */
-extern int hmacReset(HMACContext *context, enum SHAversion whichSha,
-                     const unsigned char *key, int key_len);
-extern int hmacInput(HMACContext *context, const unsigned char *text,
-                     int text_len);
-extern int hmacFinalBits(HMACContext *context, uint8_t bits,
-                         unsigned int bit_count);
-extern int hmacResult(HMACContext *context,
-                      uint8_t digest[USHAMaxHashSize]);
+extern int hmac256Reset(HMAC256Context *context, const unsigned char *key,
+			int key_len);
+extern int hmac256Input(HMAC256Context *context, const unsigned char *text,
+			int text_len);
+extern int hmac256Result(HMAC256Context *context, uint8_t *digest);
 
 #endif /* _SHA_H_ */

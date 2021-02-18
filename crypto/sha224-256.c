@@ -591,211 +591,6 @@ static int SHA224_256ResultN(SHA256Context *context,
  *     This file implements a unified interface to the SHA algorithms.
  */
 
-#include "sha.h"
-
-/*
- *  USHAReset
- *
- *  Description:
- *      This function will initialize the SHA Context in preparation
- *      for computing a new SHA message digest.
- *
- *  Parameters:
- *      context: [in/out]
- *          The context to reset.
- *      whichSha: [in]
- *          Selects which SHA reset to call
- *
- *  Returns:
- *      sha Error Code.
- *
- */
-int USHAReset(USHAContext *context, enum SHAversion whichSha)
-{
-  if (!context) return shaNull;
-  context->whichSha = whichSha;
-  switch (whichSha) {
-    case SHA224: return SHA224Reset((SHA224Context*)&context->ctx);
-    case SHA256: return SHA256Reset((SHA256Context*)&context->ctx);
-    default: return shaBadParam;
-  }
-}
-
-/*
- *  USHAInput
- *
- *  Description:
- *      This function accepts an array of octets as the next portion
- *      of the message.
- *
- *  Parameters:
- *      context: [in/out]
- *          The SHA context to update.
- *      message_array: [in]
- *          An array of octets representing the next portion of
- *          the message.
- *      length: [in]
- *          The length of the message in message_array.
- *
- *  Returns:
- *      sha Error Code.
- *
- */
-int USHAInput(USHAContext *context,
-              const uint8_t *bytes, unsigned int bytecount)
-{
-  if (!context) return shaNull;
-  switch (context->whichSha) {
-    case SHA224:
-      return SHA224Input((SHA224Context*)&context->ctx, bytes,
-          bytecount);
-    case SHA256:
-      return SHA256Input((SHA256Context*)&context->ctx, bytes,
-          bytecount);
-    default: return shaBadParam;
-  }
-}
-
-/*
- * USHAFinalBits
- *
- * Description:
- *   This function will add in any final bits of the message.
- *
- * Parameters:
- *   context: [in/out]
- *     The SHA context to update.
- *   message_bits: [in]
- *     The final bits of the message, in the upper portion of the
- *     byte.  (Use 0b###00000 instead of 0b00000### to input the
- *     three bits ###.)
- *   length: [in]
- *     The number of bits in message_bits, between 1 and 7.
- *
- * Returns:
- *   sha Error Code.
- */
-int USHAFinalBits(USHAContext *context,
-                  uint8_t bits, unsigned int bit_count)
-{
-  if (!context) return shaNull;
-  switch (context->whichSha) {
-    case SHA224:
-      return SHA224FinalBits((SHA224Context*)&context->ctx, bits,
-          bit_count);
-    case SHA256:
-      return SHA256FinalBits((SHA256Context*)&context->ctx, bits,
-          bit_count);
-    default: return shaBadParam;
-  }
-}
-
-/*
- * USHAResult
- *
- * Description:
- *   This function will return the message digest of the appropriate
- *   bit size, as returned by USHAHashSizeBits(whichSHA) for the
- *   'whichSHA' value used in the preceeding call to USHAReset,
- *   into the Message_Digest array provided by the caller.
- *
- * Parameters:
- *   context: [in/out]
- *     The context to use to calculate the SHA-1 hash.
- *   Message_Digest: [out]
- *     Where the digest is returned.
- *
- * Returns:
- *   sha Error Code.
- *
- */
-int USHAResult(USHAContext *context,
-               uint8_t Message_Digest[USHAMaxHashSize])
-{
-  if (!context) return shaNull;
-  switch (context->whichSha) {
-    case SHA224:
-      return SHA224Result((SHA224Context*)&context->ctx,
-                          Message_Digest);
-    case SHA256:
-      return SHA256Result((SHA256Context*)&context->ctx,
-                          Message_Digest);
-    default: return shaBadParam;
-  }
-}
-
-/*
- * USHABlockSize
- *
- * Description:
- *   This function will return the blocksize for the given SHA
- *   algorithm.
- *
- * Parameters:
- *   whichSha:
- *     which SHA algorithm to query
- *
- * Returns:
- *   block size
- *
- */
-int USHABlockSize(enum SHAversion whichSha)
-{
-  switch (whichSha) {
-    case SHA224: return SHA224_Message_Block_Size;
-    default:
-    case SHA256: return SHA256_Message_Block_Size;
-  }
-}
-
-/*
- * USHAHashSize
- *
- * Description:
- *   This function will return the hashsize for the given SHA
- *   algorithm.
- *
- * Parameters:
- *   whichSha:
- *     which SHA algorithm to query
- *
- * Returns:
- *   hash size
- *
- */
-int USHAHashSize(enum SHAversion whichSha)
-{
-  switch (whichSha) {
-    case SHA224: return SHA224HashSize;
-    default:
-    case SHA256: return SHA256HashSize;
-  }
-}
-
-/*
- * USHAHashSizeBits
- *
- * Description:
- *   This function will return the hashsize for the given SHA
- *   algorithm, expressed in bits.
- *
- * Parameters:
- *   whichSha:
- *     which SHA algorithm to query
- *
- * Returns:
- *   hash size in bits
- *
- */
-int USHAHashSizeBits(enum SHAversion whichSha)
-{
-  switch (whichSha) {
-    case SHA224: return SHA224HashSizeBits;
-    default:
-    case SHA256: return SHA256HashSizeBits;
-  }
-}
-
 /*
  *  Description:
  *      This file implements the HMAC algorithm (Keyed-Hashing for
@@ -813,8 +608,6 @@ int USHAHashSizeBits(enum SHAversion whichSha)
  *  Parameters:
  *      context: [in/out]
  *          The context to reset.
- *      whichSha: [in]
- *          One of SHA224, SHA256
  *      key[ ]: [in]
  *          The secret shared key.
  *      key_len: [in]
@@ -824,33 +617,32 @@ int USHAHashSizeBits(enum SHAversion whichSha)
  *      sha Error Code.
  *
  */
-int hmacReset(HMACContext *context, enum SHAversion whichSha,
-    const unsigned char *key, int key_len)
+int hmac256Reset(HMAC256Context *context, const unsigned char *key, int key_len)
 {
   int i, blocksize, hashsize, ret;
 
   /* inner padding - key XORd with ipad */
-  unsigned char k_ipad[USHA_Max_Message_Block_Size];
+  unsigned char k_ipad[SHA256_Message_Block_Size];
 
   /* temporary buffer when keylen > blocksize */
-  unsigned char tempkey[USHAMaxHashSize];
+  unsigned char tempkey[SHA256HashSize];
   if (!context) return shaNull;
   context->Computed = 0;
   context->Corrupted = shaSuccess;
 
-  blocksize = context->blockSize = USHABlockSize(whichSha);
-  hashsize = context->hashSize = USHAHashSize(whichSha);
-  context->whichSha = whichSha;
+  blocksize = context->blockSize = SHA256_Message_Block_Size;
+  hashsize = context->hashSize = SHA256HashSize;
 
   /*
    * If key is longer than the hash blocksize,
    * reset it to key = HASH(key).
    */
   if (key_len > blocksize) {
-    USHAContext tcontext;
-    int err = USHAReset(&tcontext, whichSha) ||
-              USHAInput(&tcontext, key, key_len) ||
-              USHAResult(&tcontext, tempkey);
+    SHA256Context tcontext;
+
+    int err = SHA256Reset(&tcontext) ||
+              SHA256Input(&tcontext, key, key_len) ||
+              SHA256Result(&tcontext, tempkey);
     if (err != shaSuccess) return err;
 
     key = tempkey;
@@ -881,9 +673,9 @@ int hmacReset(HMACContext *context, enum SHAversion whichSha,
 
   /* perform inner hash */
   /* init context for 1st pass */
-  ret = USHAReset(&context->shaContext, whichSha) ||
+  ret = SHA256Reset(&context->shaContext) ||
         /* and start with inner pad */
-        USHAInput(&context->shaContext, k_ipad, blocksize);
+        SHA256Input(&context->shaContext, k_ipad, blocksize);
   return context->Corrupted = ret;
 }
 
@@ -907,45 +699,14 @@ int hmacReset(HMACContext *context, enum SHAversion whichSha,
  *      sha Error Code.
  *
  */
-int hmacInput(HMACContext *context, const unsigned char *text,
-    int text_len)
+int hmac256Input(HMAC256Context *context, const unsigned char *text, int text_len)
 {
   if (!context) return shaNull;
   if (context->Corrupted) return context->Corrupted;
   if (context->Computed) return context->Corrupted = shaStateError;
   /* then text of datagram */
   return context->Corrupted =
-    USHAInput(&context->shaContext, text, text_len);
-}
-
-/*
- * hmacFinalBits
- *
- * Description:
- *   This function will add in any final bits of the message.
- *
- * Parameters:
- *   context: [in/out]
- *     The HMAC context to update.
- *   message_bits: [in]
- *     The final bits of the message, in the upper portion of the
- *     byte.  (Use 0b###00000 instead of 0b00000### to input the
- *     three bits ###.)
- *   length: [in]
- *     The number of bits in message_bits, between 1 and 7.
- *
- * Returns:
- *   sha Error Code.
- */
-int hmacFinalBits(HMACContext *context,
-    uint8_t bits, unsigned int bit_count)
-{
-  if (!context) return shaNull;
-  if (context->Corrupted) return context->Corrupted;
-  if (context->Computed) return context->Corrupted = shaStateError;
-  /* then final bits of datagram */
-  return context->Corrupted =
-    USHAFinalBits(&context->shaContext, bits, bit_count);
+    SHA256Input(&context->shaContext, text, text_len);
 }
 
 /*
@@ -967,7 +728,7 @@ int hmacFinalBits(HMACContext *context,
  *   sha Error Code.
  *
  */
-int hmacResult(HMACContext *context, uint8_t *digest)
+int hmac256Result(HMAC256Context *context, uint8_t *digest)
 {
   int ret;
   if (!context) return shaNull;
@@ -977,19 +738,18 @@ int hmacResult(HMACContext *context, uint8_t *digest)
   /* finish up 1st pass */
   /* (Use digest here as a temporary buffer.) */
   ret =
-    USHAResult(&context->shaContext, digest) ||
+    SHA256Result(&context->shaContext, digest) ||
          /* perform outer SHA */
          /* init context for 2nd pass */
-         USHAReset(&context->shaContext, context->whichSha) ||
+         SHA256Reset(&context->shaContext) ||
 
          /* start with outer pad */
-         USHAInput(&context->shaContext, context->k_opad,
-                   context->blockSize) ||
+         SHA256Input(&context->shaContext, context->k_opad, context->blockSize) ||
 
          /* then results of 1st hash */
-         USHAInput(&context->shaContext, digest, context->hashSize) ||
+         SHA256Input(&context->shaContext, digest, context->hashSize) ||
          /* finish up 2nd pass */
-         USHAResult(&context->shaContext, digest);
+         SHA256Result(&context->shaContext, digest);
 
   context->Computed = 1;
   return context->Corrupted = ret;
