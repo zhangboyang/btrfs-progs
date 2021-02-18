@@ -72,7 +72,7 @@ int hash_blake2b(const u8 *buf, size_t len, u8 *out)
 	return 0;
 }
 
-int hash_hmac_sha256(const u8 *buf, size_t length, u8 *out,
+int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
 		     const u8 *key, size_t keylen)
 {
 	gcry_mac_hd_t mac;
@@ -106,7 +106,7 @@ int hash_blake2b(const u8 *buf, size_t len, u8 *out)
 			NULL, 0);
 }
 
-int hash_hmac_sha256(const u8 *buf, size_t length, u8 *out,
+int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
 		     const u8 *key, size_t keylen)
 {
 	crypto_auth_hmacsha256_state state;

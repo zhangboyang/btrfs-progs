@@ -1100,9 +1100,9 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 		goto error;
 	}
 
-	if ((auth_key && csum_type != BTRFS_CSUM_TYPE_HMAC_SHA256) ||
-	    (csum_type == BTRFS_CSUM_TYPE_HMAC_SHA256 && !auth_key)) {
-		error("the option --auth-key must be used with --csum hmac(sha256)");
+	if ((auth_key && csum_type != BTRFS_CSUM_TYPE_AUTH_SHA256) ||
+	    (csum_type == BTRFS_CSUM_TYPE_AUTH_SHA256 && !auth_key)) {
+		error("option --auth-key must be used with --csum auth-sha256");
 		goto error;
 	}
 
