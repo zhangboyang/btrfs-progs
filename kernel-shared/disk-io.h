@@ -166,6 +166,7 @@ struct open_ctree_flags {
 	u64 root_tree_bytenr;
 	u64 chunk_tree_bytenr;
 	unsigned flags;
+	char *auth_key;
 };
 
 struct btrfs_fs_info *open_ctree_fs_info(struct open_ctree_flags *ocf);
