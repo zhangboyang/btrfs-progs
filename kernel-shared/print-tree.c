@@ -1643,6 +1643,7 @@ static bool is_valid_csum_type(u16 csum_type)
 	case BTRFS_CSUM_TYPE_SHA256:
 	case BTRFS_CSUM_TYPE_BLAKE2:
 	case BTRFS_CSUM_TYPE_AUTH_SHA256:
+	case BTRFS_CSUM_TYPE_AUTH_BLAKE2:
 		return true;
 	default:
 		return false;

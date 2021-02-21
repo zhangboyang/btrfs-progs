@@ -379,6 +379,9 @@ enum btrfs_csum_type parse_csum_type(const char *s)
 		return BTRFS_CSUM_TYPE_BLAKE2;
 	} else if (strcasecmp(s, "auth-sha256") == 0) {
 		return BTRFS_CSUM_TYPE_AUTH_SHA256;
+	} else if (strcasecmp(s, "auth-blake2b") == 0 ||
+		   strcasecmp(s, "auth-blake2") == 0) {
+		return BTRFS_CSUM_TYPE_AUTH_BLAKE2;
 	} else {
 		error("unknown csum type %s", s);
 		exit(1);

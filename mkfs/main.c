@@ -1100,10 +1100,20 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 		goto error;
 	}
 
-	if ((auth_key && csum_type != BTRFS_CSUM_TYPE_AUTH_SHA256) ||
-	    (csum_type == BTRFS_CSUM_TYPE_AUTH_SHA256 && !auth_key)) {
-		error("option --auth-key must be used with --csum auth-sha256");
-		goto error;
+	if (auth_key) {
+		if (csum_type != BTRFS_CSUM_TYPE_AUTH_SHA256 &&
+		    csum_type != BTRFS_CSUM_TYPE_AUTH_BLAKE2) {
+			error(
+		"option --auth-key must be used with authenticated hash");
+			goto error;
+		}
+	} else {
+		if (csum_type == BTRFS_CSUM_TYPE_AUTH_SHA256 ||
+		    csum_type == BTRFS_CSUM_TYPE_AUTH_BLAKE2) {
+			error(
+		"option --auth-key must not be used with unauthenticated hash");
+			goto error;
+		}
 	}
 
 	if (*fs_uuid) {

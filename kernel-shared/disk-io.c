@@ -159,6 +159,11 @@ int btrfs_csum_data(struct btrfs_fs_info *fs_info, u16 csum_type, const u8 *data
 			return 0;
 		return hash_auth_sha256(data, len, out, (const u8 *)fs_info->auth_key,
 					strlen(fs_info->auth_key));
+	case BTRFS_CSUM_TYPE_AUTH_BLAKE2:
+		if (!fs_info || !fs_info->auth_key)
+			return 0;
+		return hash_auth_blake2b(data, len, out, (const u8 *)fs_info->auth_key,
+					strlen(fs_info->auth_key));
 	default:
 		fprintf(stderr, "ERROR: unknown csum type: %d\n", csum_type);
 		ASSERT(0);
@@ -1466,7 +1471,8 @@ int btrfs_check_super(struct btrfs_super_block *sb, unsigned sbflags)
 			result, BTRFS_SUPER_INFO_SIZE - BTRFS_CSUM_SIZE);
 
 	if (memcmp(result, sb->csum, csum_size) != 0 &&
-	    csum_type != BTRFS_CSUM_TYPE_AUTH_SHA256) {
+	    csum_type != BTRFS_CSUM_TYPE_AUTH_SHA256 &&
+	    csum_type != BTRFS_CSUM_TYPE_AUTH_BLAKE2) {
 		error("superblock checksum mismatch");
 		return -EIO;
 	}

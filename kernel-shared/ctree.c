@@ -48,6 +48,7 @@ static const struct btrfs_csum {
 	[BTRFS_CSUM_TYPE_SHA256]	= { 32, "sha256" },
 	[BTRFS_CSUM_TYPE_BLAKE2]	= { 32, "blake2" },
 	[BTRFS_CSUM_TYPE_AUTH_SHA256]	= { 32, "auth-sha256" },
+	[BTRFS_CSUM_TYPE_AUTH_BLAKE2]	= { 32, "auth-blake2" },
 };
 
 u16 btrfs_super_csum_size(const struct btrfs_super_block *sb)
