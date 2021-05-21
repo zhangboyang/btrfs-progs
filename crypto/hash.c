@@ -251,3 +251,65 @@ int hash_auth_blake2b(const u8 *buf, size_t length, u8 *out,
 }
 
 #endif
+
+void auth_key_init(struct auth_key_spec *spec)
+{
+	memset(spec, 0, sizeof(struct auth_key_spec));
+}
+
+void auth_key_reset(struct auth_key_spec *spec)
+{
+	if (!spec->spec_valid) {
+		auth_key_init(spec);
+		return;
+	}
+	if (spec->type == AUTH_KEY_BY_RAW) {
+		free(spec->spec);
+		if (spec->key_valid)
+			free(spec->key);
+	}
+
+	auth_key_init(spec);
+}
+
+/*
+ * Parse key specifier string @str into @spec
+ *
+ * Format:
+ * - id:1234
+ * - name:keyname
+ * - file:/read/from/this/file
+ * - fd:3
+ * - raw:useonlyfortesting
+ */
+int auth_key_parse(struct auth_key_spec *spec, const char *str)
+{
+	if (strncmp("raw:", str, strlen("raw:")) == 0) {
+		spec->type = AUTH_KEY_BY_RAW;
+		spec->spec = strdup(str);
+	} else {
+		spec->spec_valid = false;
+		return -EINVAL;
+	}
+
+	spec->spec_valid = true;
+	return 0;
+}
+
+/*
+ * Set up key material according to the spec
+ */
+int auth_key_setup(struct auth_key_spec *spec)
+{
+	if (spec->type == AUTH_KEY_BY_RAW) {
+                spec->key = strdup(spec->spec + strlen("raw:"));
+                spec->length = strlen(spec->key);
+        } else {
+                fprintf(stderr, "unsupported auth key spec: %s\n", spec->spec);
+		spec->key_valid = false;
+                return -EINVAL;
+        }
+
+	spec->key_valid = true;
+        return 0;
+}
