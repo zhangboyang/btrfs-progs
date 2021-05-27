@@ -50,6 +50,7 @@
 #include "common/box.h"
 #include "common/units.h"
 #include "check/qgroup-verify.h"
+#include "crypto/hash.h"
 
 static int verbose = 1;
 
@@ -926,9 +927,10 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 	struct btrfs_mkfs_config mkfs_cfg;
 	enum btrfs_csum_type csum_type = BTRFS_CSUM_TYPE_CRC32;
 	u64 system_group_size;
-	char *auth_key = NULL;
+	struct auth_key_spec auth_key;
 
 	crc32c_optimization_init();
+	auth_key_init(&auth_key);
 
 	while(1) {
 		int c;
@@ -1062,7 +1064,13 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 				csum_type = parse_csum_type(optarg);
 				break;
 			case GETOPT_VAL_AUTHKEY:
-				auth_key = strdup(optarg);
+				auth_key_reset(&auth_key);
+				ret = auth_key_parse(&auth_key, optarg);
+				if (ret) {
+					error("unable to parse auth key spec: %s\n",
+						optarg);
+					goto error;
+				}
 				break;
 			case GETOPT_VAL_HELP:
 			default:
@@ -1100,7 +1108,7 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 		goto error;
 	}
 
-	if (auth_key) {
+	if (auth_key.spec_valid) {
 		if (csum_type != BTRFS_CSUM_TYPE_AUTH_SHA256 &&
 		    csum_type != BTRFS_CSUM_TYPE_AUTH_BLAKE2) {
 			error(
@@ -1399,7 +1407,7 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 	mkfs_cfg.features = features;
 	mkfs_cfg.csum_type = csum_type;
 	mkfs_cfg.zone_size = zone_size(file);
-	mkfs_cfg.auth_key = auth_key;
+	mkfs_cfg.auth_key = &auth_key;
 
 	ret = make_btrfs(fd, &mkfs_cfg);
 	if (ret) {
@@ -1408,7 +1416,7 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 		goto error;
 	}
 
-	ocf.auth_key = auth_key;
+	ocf.auth_key = &auth_key;
 	ocf.filename = file;
 	ocf.flags = OPEN_CTREE_WRITES | OPEN_CTREE_TEMPORARY_SUPER;
 	fs_info = open_ctree_fs_info(&ocf);
@@ -1608,6 +1616,8 @@ raid_groups:
 		printf("Checksum:           %s",
 		       btrfs_super_csum_name(mkfs_cfg.csum_type));
 		printf("\n");
+		if (auth_key.spec_valid)
+			printf("  Auth key:         %s\n", auth_key.spec);
 
 		list_all_devices(root);
 	}
@@ -1638,7 +1648,7 @@ out:
 
 	btrfs_close_all_devices();
 	free(label);
-	free(auth_key);
+	auth_key_reset(&auth_key);
 
 	return !!ret;
 error:
@@ -1646,7 +1656,7 @@ error:
 		close(fd);
 
 	free(label);
-	free(auth_key);
+	auth_key_reset(&auth_key);
 	exit(1);
 success:
 	exit(0);

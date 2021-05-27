@@ -29,6 +29,7 @@
 #include "common/device-utils.h"
 #include "common/open-utils.h"
 #include "mkfs/common.h"
+#include "crypto/hash.h"
 
 static u64 reference_root_table[] = {
 	[1] =	BTRFS_ROOT_TREE_OBJECTID,
@@ -176,6 +177,15 @@ int make_btrfs(int fd, struct btrfs_mkfs_config *cfg)
 		return -ENOMEM;
 	}
 
+	if (cfg->auth_key->spec_valid) {
+		ret = auth_key_setup(cfg->auth_key);
+		if (ret < 0) {
+			errno = -ret;
+			error("failed to set up auth key spec %s: %m",
+					cfg->auth_key->spec);
+			goto out;
+		}
+	}
 
 	first_free = BTRFS_SUPER_INFO_OFFSET + cfg->sectorsize * 2 - 1;
 	first_free &= ~((u64)cfg->sectorsize - 1);

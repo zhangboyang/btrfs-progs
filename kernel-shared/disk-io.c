@@ -155,15 +155,15 @@ int btrfs_csum_data(struct btrfs_fs_info *fs_info, u16 csum_type, const u8 *data
 	case BTRFS_CSUM_TYPE_BLAKE2:
 		return hash_blake2b(data, len, out);
 	case BTRFS_CSUM_TYPE_AUTH_SHA256:
-		if (!fs_info || !fs_info->auth_key)
+		if (!fs_info || !fs_info->auth_key || !fs_info->auth_key->key_valid)
 			return 0;
-		return hash_auth_sha256(data, len, out, (const u8 *)fs_info->auth_key,
-					strlen(fs_info->auth_key));
+		return hash_auth_sha256(data, len, out, (const u8 *)fs_info->auth_key->key,
+					fs_info->auth_key->length);
 	case BTRFS_CSUM_TYPE_AUTH_BLAKE2:
-		if (!fs_info || !fs_info->auth_key)
+		if (!fs_info || !fs_info->auth_key || !fs_info->auth_key->key_valid)
 			return 0;
-		return hash_auth_blake2b(data, len, out, (const u8 *)fs_info->auth_key,
-					strlen(fs_info->auth_key));
+		return hash_auth_blake2b(data, len, out, (const u8 *)fs_info->auth_key->key,
+					fs_info->auth_key->length);
 	default:
 		fprintf(stderr, "ERROR: unknown csum type: %d\n", csum_type);
 		ASSERT(0);
@@ -1225,6 +1225,8 @@ static struct btrfs_fs_info *__open_ctree_fd(int fp, struct open_ctree_flags *oc
 	struct btrfs_super_block *disk_super;
 	struct btrfs_fs_devices *fs_devices = NULL;
 	struct extent_buffer *eb;
+	u16 csum_type;
+	int csum_size;
 	int ret;
 	int oflags;
 	unsigned sbflags = SBREAD_DEFAULT;
@@ -1243,7 +1245,6 @@ static struct btrfs_fs_info *__open_ctree_fd(int fp, struct open_ctree_flags *oc
 		fprintf(stderr, "Failed to allocate memory for fs_info\n");
 		return NULL;
 	}
-	fs_info->auth_key = ocf->auth_key;
 	if (flags & OPEN_CTREE_RESTORE)
 		fs_info->on_restoring = 1;
 	if (flags & OPEN_CTREE_SUPPRESS_CHECK_BLOCK_ERRORS)
@@ -1296,6 +1297,38 @@ static struct btrfs_fs_info *__open_ctree_fd(int fp, struct open_ctree_flags *oc
 	if (ret) {
 		printk("No valid btrfs found\n");
 		goto out_devices;
+	}
+
+	/* btrfs_read_dev_super skips authentitaced checksums, verify it now */
+	csum_type = btrfs_super_csum_type(disk_super);
+	csum_size = btrfs_super_csum_size(disk_super);
+
+	if (csum_type == BTRFS_CSUM_TYPE_AUTH_SHA256 ||
+	    csum_type == BTRFS_CSUM_TYPE_AUTH_BLAKE2) {
+		u8 result[BTRFS_CSUM_SIZE];
+
+		if (!ocf->auth_key || !ocf->auth_key->spec_valid) {
+			fprintf(stderr, "ERROR: authenticated checksum without key\n");
+			ret = -ENOKEY;
+			goto out_devices;
+		}
+		ret = auth_key_setup(ocf->auth_key);
+		if (ret) {
+			errno = -ret;
+			fprintf(stderr, "ERROR: failed to set up auth key spec %s: %m\n",
+					ocf->auth_key->spec);
+			goto out;
+		}
+		fs_info->auth_key = ocf->auth_key;
+
+		/* This needs only fs_info::auth_key */
+		btrfs_csum_data(fs_info, csum_type, (u8 *)disk_super + BTRFS_CSUM_SIZE,
+				result, BTRFS_SUPER_INFO_SIZE - BTRFS_CSUM_SIZE);
+		if (memcmp(result, disk_super->csum, csum_size) != 0) {
+			ret = -EIO;
+			fprintf(stderr, "ERROR: superblock checksum mismatch");
+			goto out;
+		}
 	}
 
 	if (btrfs_super_flags(disk_super) & BTRFS_SUPER_FLAG_CHANGING_FSID &&

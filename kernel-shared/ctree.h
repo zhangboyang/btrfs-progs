@@ -1145,6 +1145,7 @@ struct btrfs_block_group {
 	u64 write_offset;
 };
 
+struct auth_key_spec;
 struct btrfs_device;
 struct btrfs_fs_devices;
 struct btrfs_fs_info {
@@ -1222,7 +1223,7 @@ struct btrfs_fs_info {
 	u32 nodesize;
 	u32 sectorsize;
 	u32 stripesize;
-	char *auth_key;
+	struct auth_key_spec *auth_key;
 
 	/*
 	 * Zone size > 0 when in ZONED mode, otherwise it's used for a check

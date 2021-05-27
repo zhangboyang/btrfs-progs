@@ -40,6 +40,7 @@
 
 struct btrfs_trans_handle;
 struct btrfs_root;
+struct auth_key_spec;
 
 /*
  * Tree root blocks created during mkfs
@@ -80,8 +81,8 @@ struct btrfs_mkfs_config {
 	/* Superblock offset after make_btrfs */
 	u64 super_bytenr;
 
-	/* authentication key */
-	char *auth_key;
+	/* Authentication key spec */
+	struct auth_key_spec *auth_key;
 };
 
 int make_btrfs(int fd, struct btrfs_mkfs_config *cfg);
