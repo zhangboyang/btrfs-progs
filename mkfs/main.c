@@ -927,10 +927,9 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 	struct btrfs_mkfs_config mkfs_cfg;
 	enum btrfs_csum_type csum_type = BTRFS_CSUM_TYPE_CRC32;
 	u64 system_group_size;
-	struct auth_key_spec auth_key;
 
 	crc32c_optimization_init();
-	auth_key_init(&auth_key);
+	bconf_auth_key_init();
 
 	while(1) {
 		int c;
@@ -1064,8 +1063,7 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 				csum_type = parse_csum_type(optarg);
 				break;
 			case GETOPT_VAL_AUTHKEY:
-				auth_key_reset(&auth_key);
-				ret = auth_key_parse(&auth_key, optarg);
+				ret = bconf_auth_key_set(optarg);
 				if (ret) {
 					error("unable to parse auth key spec: %s\n",
 						optarg);
@@ -1108,7 +1106,7 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 		goto error;
 	}
 
-	if (auth_key.spec_valid) {
+	if (bconf.auth_key.spec_valid) {
 		if (csum_type != BTRFS_CSUM_TYPE_AUTH_SHA256 &&
 		    csum_type != BTRFS_CSUM_TYPE_AUTH_BLAKE2) {
 			error(
@@ -1407,7 +1405,7 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 	mkfs_cfg.features = features;
 	mkfs_cfg.csum_type = csum_type;
 	mkfs_cfg.zone_size = zone_size(file);
-	mkfs_cfg.auth_key = &auth_key;
+	mkfs_cfg.auth_key = &bconf.auth_key;
 
 	ret = make_btrfs(fd, &mkfs_cfg);
 	if (ret) {
@@ -1416,7 +1414,7 @@ int BOX_MAIN(mkfs)(int argc, char **argv)
 		goto error;
 	}
 
-	ocf.auth_key = &auth_key;
+	ocf_set_globals(&ocf);
 	ocf.filename = file;
 	ocf.flags = OPEN_CTREE_WRITES | OPEN_CTREE_TEMPORARY_SUPER;
 	fs_info = open_ctree_fs_info(&ocf);
@@ -1616,8 +1614,8 @@ raid_groups:
 		printf("Checksum:           %s",
 		       btrfs_super_csum_name(mkfs_cfg.csum_type));
 		printf("\n");
-		if (auth_key.spec_valid)
-			printf("  Auth key:         %s\n", auth_key.spec);
+		if (bconf.auth_key.spec_valid)
+			printf("  Auth key:         %s\n", bconf.auth_key.spec);
 
 		list_all_devices(root);
 	}
@@ -1648,7 +1646,7 @@ out:
 
 	btrfs_close_all_devices();
 	free(label);
-	auth_key_reset(&auth_key);
+	auth_key_reset(&bconf.auth_key);
 
 	return !!ret;
 error:
@@ -1656,7 +1654,7 @@ error:
 		close(fd);
 
 	free(label);
-	auth_key_reset(&auth_key);
+	auth_key_reset(&bconf.auth_key);
 	exit(1);
 success:
 	exit(0);

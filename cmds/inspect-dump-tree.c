@@ -474,6 +474,7 @@ static int cmd_inspect_dump_tree(const struct cmd_struct *cmd,
 
 	printf("%s\n", PACKAGE_STRING);
 
+	ocf_set_globals(&ocf);
 	ocf.filename = argv[optind];
 	ocf.flags = open_ctree_flags;
 	info = open_ctree_fs_info(&ocf);

@@ -10415,6 +10415,7 @@ static int cmd_check(const struct cmd_struct *cmd, int argc, char **argv)
 	if (repair)
 		ctree_flags |= OPEN_CTREE_PARTIAL;
 
+	ocf_set_globals(&ocf);
 	ocf.filename = argv[optind];
 	ocf.sb_bytenr = bytenr;
 	ocf.root_tree_bytenr = tree_root_bytenr;

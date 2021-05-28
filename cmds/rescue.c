@@ -250,6 +250,7 @@ static int cmd_rescue_fix_device_size(const struct cmd_struct *cmd,
 		goto out;
 	}
 
+	ocf_set_globals(&ocf);
 	ocf.filename = devname;
 	ocf.flags = OPEN_CTREE_WRITES | OPEN_CTREE_PARTIAL;
 	fs_info = open_ctree_fs_info(&ocf);

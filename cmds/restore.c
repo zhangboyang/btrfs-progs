@@ -1211,6 +1211,7 @@ static struct btrfs_root *open_fs(const char *dev, u64 root_location,
 		 * in extent tree. Skip block group item search will allow
 		 * restore to be executed on heavily damaged fs.
 		 */
+		ocf_set_globals(&ocf);
 		ocf.filename = dev;
 		ocf.sb_bytenr = bytenr;
 		ocf.root_tree_bytenr = root_location;

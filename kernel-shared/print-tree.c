@@ -1653,8 +1653,12 @@ static bool is_valid_csum_type(u16 csum_type)
 static int check_csum_sblock(void *sb, int csum_size, u16 csum_type)
 {
 	u8 result[BTRFS_CSUM_SIZE];
+	struct btrfs_fs_info fs_info;
 
-	btrfs_csum_data(NULL, csum_type, (u8 *)sb + BTRFS_CSUM_SIZE,
+	fs_info.auth_key = &bconf.auth_key;
+
+	/* This needs only fs_info::auth_key */
+	btrfs_csum_data(&fs_info, csum_type, (u8 *)sb + BTRFS_CSUM_SIZE,
 			result, BTRFS_SUPER_INFO_SIZE - BTRFS_CSUM_SIZE);
 
 	return !memcmp(sb, result, csum_size);
@@ -1938,7 +1942,7 @@ void btrfs_print_superblock(struct btrfs_super_block *sb, int full)
 	bool metadata_uuid_present = (btrfs_super_incompat_flags(sb) &
 		BTRFS_FEATURE_INCOMPAT_METADATA_UUID);
 	int cmp_res = 0;
-
+	int ret;
 
 	csum_type = btrfs_super_csum_type(sb);
 	csum_size = BTRFS_CSUM_SIZE;
@@ -1951,6 +1955,26 @@ void btrfs_print_superblock(struct btrfs_super_block *sb, int full)
 	}
 	printf(")\n");
 	printf("csum_size\t\t%llu\n", (unsigned long long)csum_size);
+
+	if (csum_type == BTRFS_CSUM_TYPE_AUTH_SHA256 ||
+	    csum_type == BTRFS_CSUM_TYPE_AUTH_BLAKE2) {
+		struct auth_key_spec *auth_key;
+
+		auth_key = &bconf.auth_key;
+
+		if (!auth_key->spec_valid) {
+			printf("WARNING: authenticated checksum without key\n");
+		} else {
+			/* Linked to bconf */
+			ret = auth_key_setup(auth_key);
+			if (ret) {
+				errno = -ret;
+				printf("WARNING: failed to set up auth key spec %s: %m\n",
+					auth_key->spec);
+			}
+		}
+		printf("INFO: auth key properly set up from %s\n", auth_key->spec);
+	}
 
 	printf("csum\t\t\t0x");
 	for (i = 0, p = sb->csum; i < csum_size; i++)

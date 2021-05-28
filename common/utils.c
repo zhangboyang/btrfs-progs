@@ -1421,6 +1421,25 @@ void bconf_be_quiet(void)
 	bconf.verbose = BTRFS_BCONF_QUIET;
 }
 
+void bconf_auth_key_init(void)
+{
+	auth_key_init(&bconf.auth_key);
+}
+
+int bconf_auth_key_set(const char *str)
+{
+	auth_key_reset(&bconf.auth_key);
+	return auth_key_parse(&bconf.auth_key, str);
+}
+
+void ocf_set_globals(struct open_ctree_flags *ocf)
+{
+	if (bconf.auth_key.spec_valid) {
+		printf("DEBUG: set auth-key spec %s\n", bconf.auth_key.spec);
+	}
+	ocf->auth_key = &bconf.auth_key;
+}
+
 /* Returns total size of main memory in bytes, -1UL if error. */
 unsigned long total_memory(void)
 {

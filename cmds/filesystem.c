@@ -585,6 +585,8 @@ static int map_seed_devices(struct list_head *all_uuids)
 	list_for_each_entry(cur_fs, all_uuids, list) {
 		struct open_ctree_flags ocf = { 0 };
 
+		ocf_set_globals(&ocf);
+
 		device = list_first_entry(&cur_fs->devices,
 						struct btrfs_device, dev_list);
 		if (!device)

@@ -242,7 +242,7 @@ static void handle_output_format(const char *format)
  */
 static int handle_global_options(int argc, char **argv)
 {
-	enum { OPT_HELP = 256, OPT_VERSION, OPT_FULL, OPT_FORMAT };
+	enum { OPT_HELP = 256, OPT_VERSION, OPT_FULL, OPT_FORMAT, OPT_AUTH_KEY };
 	static const struct option long_options[] = {
 		{ "help", no_argument, NULL, OPT_HELP },
 		{ "version", no_argument, NULL, OPT_VERSION },
@@ -250,9 +250,11 @@ static int handle_global_options(int argc, char **argv)
 		{ "full", no_argument, NULL, OPT_FULL },
 		{ "verbose", no_argument, NULL, 'v' },
 		{ "quiet", no_argument, NULL, 'q' },
+		{ "auth-key", required_argument, NULL, OPT_AUTH_KEY },
 		{ NULL, 0, NULL, 0}
 	};
 	int shift;
+	int ret;
 
 	if (argc == 0)
 		return 0;
@@ -271,6 +273,14 @@ static int handle_global_options(int argc, char **argv)
 		case OPT_FULL: break;
 		case OPT_FORMAT:
 			handle_output_format(optarg);
+			break;
+		case OPT_AUTH_KEY:
+			ret = bconf_auth_key_set(optarg);
+			if (ret) {
+				error("unable to parse auth key spec: %s\n",
+						optarg);
+				exit(129);
+			}
 			break;
 		case 'v':
 			bconf_be_verbose();

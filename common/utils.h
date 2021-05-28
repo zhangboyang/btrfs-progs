@@ -30,6 +30,7 @@
 #include "common/messages.h"
 #include "ioctl.h"
 #include "common/fsfeatures.h"
+#include "crypto/hash.h"
 
 enum exclusive_operation {
 	BTRFS_EXCLOP_NONE,
@@ -106,12 +107,20 @@ struct btrfs_config {
 	 *   > 0: verbose level
 	 */
 	int verbose;
+
+	/* Command line parsing */
+	struct auth_key_spec auth_key;
 };
 extern struct btrfs_config bconf;
+
+struct open_ctree_flags;
 
 void btrfs_config_init(void);
 void bconf_be_verbose(void);
 void bconf_be_quiet(void);
+void bconf_auth_key_init();
+int bconf_auth_key_set(const char *str);
+void ocf_set_globals(struct open_ctree_flags *ocf);
 
 /* Pseudo random number generator wrappers */
 int rand_int(void);
