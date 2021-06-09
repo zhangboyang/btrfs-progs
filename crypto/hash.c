@@ -54,24 +54,30 @@ int hash_blake2b(const u8 *buf, size_t len, u8 *out)
 	return 0;
 }
 
-int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
+int hash_auth_sha256(const u8 *tag, size_t tlength,
+		     const u8 *buf, size_t length, u8 *out,
 		     const u8 *key, size_t keylen)
 {
 	HMAC256Context context;
 
 	hmac256Reset(&context, key, keylen);
+	if (tag)
+		hmac256Input(&context, tag, tlength);
 	hmac256Input(&context, buf, length);
 	hmac256Result(&context, out);
 
 	return 0;
 }
 
-int hash_auth_blake2b(const u8 *buf, size_t length, u8 *out,
+int hash_auth_blake2b(const u8 *tag, size_t tlength,
+		      const u8 *buf, size_t length, u8 *out,
 		      const u8 *key, size_t keylen)
 {
 	blake2b_state S;
 
 	blake2b_init_key(&S, CRYPTO_HASH_SIZE_MAX, key, keylen);
+	if (tag)
+		blake2b_update(&S, tag, tlength);
 	blake2b_update(&S, buf, length);
 	blake2b_final(&S, out, CRYPTO_HASH_SIZE_MAX);
 
@@ -96,13 +102,16 @@ int hash_blake2b(const u8 *buf, size_t len, u8 *out)
 	return 0;
 }
 
-int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
+int hash_auth_sha256(const u8 *tag, size_t tlength,
+		     const u8 *buf, size_t length, u8 *out,
 		     const u8 *key, size_t keylen)
 {
 	gcry_mac_hd_t mac;
 
 	gcry_mac_open(&mac, GCRY_MAC_HMAC_SHA256, 0, NULL);
 	gcry_mac_setkey(mac, key, keylen);
+	if (tag)
+		gcry_mac_write(mac, tag, tlength);
 	gcry_mac_write(mac, buf, length);
 	length = CRYPTO_HASH_SIZE_MAX;
 	gcry_mac_read(mac, out, &length);
@@ -111,7 +120,8 @@ int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
 	return 0;
 }
 
-int hash_auth_blake2b(const u8 *buf, size_t length, u8 *out,
+int hash_auth_blake2b(const u8 *tag, size_t tlength,
+		      const u8 *buf, size_t length, u8 *out,
 		      const u8 *key, size_t keylen)
 {
 	gcry_md_hd_t md;
@@ -120,6 +130,8 @@ int hash_auth_blake2b(const u8 *buf, size_t length, u8 *out,
 	/* Use digest with a key and not the HMAC API, results are not equal  */
 	gcry_md_open(&md, GCRY_MD_BLAKE2B_256, 0);
 	gcry_md_setkey(md, key, keylen);
+	if (tag)
+		gcry_md_write(md, tag, tlength);
 	gcry_md_write(md, buf, length);
 	digest = gcry_md_read(md, GCRY_MD_BLAKE2B_256);
 	memcpy(out, digest, CRYPTO_HASH_SIZE_MAX);
@@ -147,23 +159,31 @@ int hash_blake2b(const u8 *buf, size_t len, u8 *out)
 			NULL, 0);
 }
 
-int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
+int hash_auth_sha256(const u8 *tag, size_t tlength,
+		     const u8 *buf, size_t length, u8 *out,
 		     const u8 *key, size_t keylen)
 {
 	crypto_auth_hmacsha256_state state;
 
 	crypto_auth_hmacsha256_init(&state, (unsigned char *)key, keylen);
+	if (tag)
+		crypto_auth_hmacsha256_update(&state, tag, tlength);
 	crypto_auth_hmacsha256_update(&state, buf, length);
 	crypto_auth_hmacsha256_final(&state, out);
 
 	return 0;
 }
 
-int hash_auth_blake2b(const u8 *buf, size_t length, u8 *out,
+int hash_auth_blake2b(const u8 *tag, size_t tlength,
+		      const u8 *buf, size_t length, u8 *out,
 		      const u8 *key, size_t keylen)
 {
-	return crypto_generichash_blake2b(out, CRYPTO_HASH_SIZE_MAX, buf, length,
-			key, keylen);
+	/* TODO */
+	crypto_generichash_blake2b_state state;
+	crypto_generichash_blake2b_init(&state, key, keylen, CRYPTO_HASH_SIZE_MAX);
+	if (tag)
+		crypto_generichash_blake2b_update(&state, tag, tlength);
+	return crypto_generichash_blake2b_final(&state, out, CRYPTO_HASH_SIZE_MAX);
 }
 
 #endif
@@ -212,25 +232,44 @@ int hash_blake2b(const u8 *buf, size_t len, u8 *out)
 	return ret;
 }
 
-int hash_auth_sha256(const u8 *buf, size_t length, u8 *out,
+int hash_auth_sha256(const u8 *tag, size_t tlength,
+		     const u8 *buf, size_t length, u8 *out,
 		     const u8 *key, size_t keylen)
 {
+	u8 tmp[tlength + length];
 	int ret;
+
+	/*
+	 * Calling to kernel for init/update/update/final costs more in context
+	 * switches than a temporary buffer
+	 */
+	memcpy(tmp, tag, tlength);
+	memcpy(tmp + tlength, buf, length);
 
 	/*
 	 * This is slow as it needs to open a connection each time but is safe
 	 * in case it's called with different keys.
 	 */
-	ret = kcapi_md_hmac_sha256(key, keylen, buf, length, out, CRYPTO_HASH_SIZE_MAX);
+	ret = kcapi_md_hmac_sha256(key, keylen, tmp, tlength + length, out,
+				   CRYPTO_HASH_SIZE_MAX);
 
 	return ret;
 }
 
-int hash_auth_blake2b(const u8 *buf, size_t length, u8 *out,
+int hash_auth_blake2b(const u8 *tag, size_t tlength,
+		      const u8 *buf, size_t length, u8 *out,
 		      const u8 *key, size_t keylen)
 {
 	struct kcapi_handle *handle;
+	u8 tmp[tlength + length];
 	int ret;
+
+	/*
+	 * Calling to kernel for init/update/update/final costs more in context
+	 * switches than a temporary buffer
+	 */
+	memcpy(tmp, tag, tlength);
+	memcpy(tmp + tlength, buf, length);
 
 	/*
 	 * This is slow as it needs to open a connection each time but is safe
@@ -244,7 +283,7 @@ int hash_auth_blake2b(const u8 *buf, size_t length, u8 *out,
 		exit(1);
 	}
 	ret = kcapi_md_setkey(handle, key, keylen);
-	ret = kcapi_md_digest(handle, buf, length, out, CRYPTO_HASH_SIZE_MAX);
+	ret = kcapi_md_digest(handle, tmp, tlength + length, out, CRYPTO_HASH_SIZE_MAX);
 	kcapi_md_destroy(handle);
 
 	return ret;

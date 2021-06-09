@@ -140,10 +140,22 @@ static void print_tree_block_error(struct btrfs_fs_info *fs_info,
 	}
 }
 
-int btrfs_csum_data(struct btrfs_fs_info *fs_info, u16 csum_type, const u8 *data,
-		    u8 *out, size_t len)
+static int csum_block(struct btrfs_fs_info *fs_info, bool metadata, u16 csum_type,
+		const u8 *data, u8 *out, size_t len)
 {
+	const u8 *tag;
+	int tlength;
+
 	memset(out, 0, BTRFS_CSUM_SIZE);
+
+	if (metadata) {
+		tag = NULL;
+		tlength = 0;
+	} else {
+		ASSERT(fs_info);
+		tag = fs_info->super_copy->fsid;
+		tlength = BTRFS_FSID_SIZE;
+	}
 
 	switch (csum_type) {
 	case BTRFS_CSUM_TYPE_CRC32:
@@ -157,19 +169,35 @@ int btrfs_csum_data(struct btrfs_fs_info *fs_info, u16 csum_type, const u8 *data
 	case BTRFS_CSUM_TYPE_AUTH_SHA256:
 		if (!fs_info || !fs_info->auth_key || !fs_info->auth_key->key_valid)
 			return 0;
-		return hash_auth_sha256(data, len, out, (const u8 *)fs_info->auth_key->key,
-					fs_info->auth_key->length);
+		return hash_auth_sha256(
+				tag, tlength,
+				data, len, out, (const u8 *)fs_info->auth_key->key,
+				fs_info->auth_key->length);
 	case BTRFS_CSUM_TYPE_AUTH_BLAKE2:
 		if (!fs_info || !fs_info->auth_key || !fs_info->auth_key->key_valid)
 			return 0;
-		return hash_auth_blake2b(data, len, out, (const u8 *)fs_info->auth_key->key,
-					fs_info->auth_key->length);
+		return hash_auth_blake2b(
+				tag, tlength,
+				data, len, out, (const u8 *)fs_info->auth_key->key,
+				fs_info->auth_key->length);
 	default:
 		fprintf(stderr, "ERROR: unknown csum type: %d\n", csum_type);
 		ASSERT(0);
 	}
 
 	return -1;
+}
+
+int btrfs_csum_metadata(struct btrfs_fs_info *fs_info, u16 csum_type, const u8 *data,
+		    u8 *out, size_t len)
+{
+	return csum_block(fs_info, true, csum_type, data, out, len);
+}
+
+int btrfs_csum_data(struct btrfs_fs_info *fs_info, u16 csum_type, const u8 *data,
+		    u8 *out, size_t len)
+{
+	return csum_block(fs_info, false, csum_type, data, out, len);
 }
 
 int btrfs_format_csum(u16 csum_type, const u8 *data, char *output)
