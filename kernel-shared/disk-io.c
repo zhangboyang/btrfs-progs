@@ -143,19 +143,10 @@ static void print_tree_block_error(struct btrfs_fs_info *fs_info,
 static int csum_block(struct btrfs_fs_info *fs_info, bool metadata, u16 csum_type,
 		const u8 *data, u8 *out, size_t len)
 {
-	const u8 *tag;
-	int tlength;
+	const u8 *tag = NULL;
+	int tlength = 0;
 
 	memset(out, 0, BTRFS_CSUM_SIZE);
-
-	if (metadata) {
-		tag = NULL;
-		tlength = 0;
-	} else {
-		ASSERT(fs_info);
-		tag = fs_info->super_copy->fsid;
-		tlength = BTRFS_FSID_SIZE;
-	}
 
 	switch (csum_type) {
 	case BTRFS_CSUM_TYPE_CRC32:
@@ -169,6 +160,10 @@ static int csum_block(struct btrfs_fs_info *fs_info, bool metadata, u16 csum_typ
 	case BTRFS_CSUM_TYPE_AUTH_SHA256:
 		if (!fs_info || !fs_info->auth_key || !fs_info->auth_key->key_valid)
 			return 0;
+		if (!metadata) {
+			tag = fs_info->auth_key->tag;
+			tlength = fs_info->auth_key->tlength;
+		}
 		return hash_auth_sha256(
 				tag, tlength,
 				data, len, out, (const u8 *)fs_info->auth_key->key,
@@ -176,6 +171,10 @@ static int csum_block(struct btrfs_fs_info *fs_info, bool metadata, u16 csum_typ
 	case BTRFS_CSUM_TYPE_AUTH_BLAKE2:
 		if (!fs_info || !fs_info->auth_key || !fs_info->auth_key->key_valid)
 			return 0;
+		if (!metadata) {
+			tag = fs_info->auth_key->tag;
+			tlength = fs_info->auth_key->tlength;
+		}
 		return hash_auth_blake2b(
 				tag, tlength,
 				data, len, out, (const u8 *)fs_info->auth_key->key,

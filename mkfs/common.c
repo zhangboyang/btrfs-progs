@@ -254,6 +254,7 @@ int make_btrfs(int fd, struct btrfs_mkfs_config *cfg)
 			    BTRFS_UUID_SIZE);
 
 	buf->fs_info->auth_key = cfg->auth_key;
+	auth_key_tag_set(cfg->auth_key, super.fsid, BTRFS_FSID_SIZE);
 
 	ret = btrfs_create_tree_root(fd, cfg, buf);
 	if (ret < 0)

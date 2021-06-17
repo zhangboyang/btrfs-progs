@@ -1432,6 +1432,11 @@ int bconf_auth_key_set(const char *str)
 	return auth_key_parse(&bconf.auth_key, str);
 }
 
+int bconf_auth_tag_set(const u8 *tag, size_t tlength)
+{
+	auth_key_tag_set(&bconf.auth_key, tag, tlength);
+}
+
 void ocf_set_globals(struct open_ctree_flags *ocf)
 {
 	if (bconf.auth_key.spec_valid) {

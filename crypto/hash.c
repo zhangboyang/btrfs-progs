@@ -352,3 +352,10 @@ int auth_key_setup(struct auth_key_spec *spec)
 	spec->key_valid = true;
         return 0;
 }
+
+void auth_key_tag_set(struct auth_key_spec *spec, const u8 *tag, size_t tlength)
+{
+	spec->tag_valid = true;
+	ASSERT(tlength < sizeof(spec->tag));
+	memcpy(spec->tag, tag, tlength);
+}

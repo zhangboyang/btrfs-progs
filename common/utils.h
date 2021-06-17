@@ -120,6 +120,7 @@ void bconf_be_verbose(void);
 void bconf_be_quiet(void);
 void bconf_auth_key_init();
 int bconf_auth_key_set(const char *str);
+int bconf_auth_tag_set(const u8 *tag, size_t tlength);
 void ocf_set_globals(struct open_ctree_flags *ocf);
 
 /* Pseudo random number generator wrappers */

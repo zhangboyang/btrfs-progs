@@ -28,6 +28,9 @@ struct auth_key_spec {
 	bool key_valid;
 	char *key;
 	size_t length;
+	bool tag_valid;
+	u8 tag[32];
+	size_t tlength;
 };
 
 int hash_crc32c(const u8 *buf, size_t length, u8 *out);
@@ -43,6 +46,7 @@ int hash_auth_blake2b(const u8 *tag, size_t tlength,
 
 void auth_key_init(struct auth_key_spec *spec);
 void auth_key_reset(struct auth_key_spec *spec);
+void auth_key_tag_set(struct auth_key_spec *spec, const u8 *tag, size_t tlength);
 int auth_key_parse(struct auth_key_spec *spec, const char *str);
 int auth_key_setup(struct auth_key_spec *spec);
 
