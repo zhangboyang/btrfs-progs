@@ -314,6 +314,7 @@ static int read_and_process_cmd(struct btrfs_send_stream *sctx)
 	struct timespec at;
 	struct timespec ct;
 	struct timespec mt;
+	struct timespec ot;
 	u8 uuid[BTRFS_UUID_SIZE];
 	u8 clone_uuid[BTRFS_UUID_SIZE];
 	u64 tmp;
@@ -450,6 +451,14 @@ static int read_and_process_cmd(struct btrfs_send_stream *sctx)
 		TLV_GET_U64(sctx, BTRFS_SEND_A_FILE_OFFSET, &offset);
 		TLV_GET_U64(sctx, BTRFS_SEND_A_SIZE, &tmp);
 		ret = sctx->ops->update_extent(path, offset, tmp, sctx->user);
+		break;
+	case BTRFS_SEND_C_UTIMES2:
+		TLV_GET_STRING(sctx, BTRFS_SEND_A_PATH, &path);
+		TLV_GET_TIMESPEC(sctx, BTRFS_SEND_A_ATIME, &at);
+		TLV_GET_TIMESPEC(sctx, BTRFS_SEND_A_MTIME, &mt);
+		TLV_GET_TIMESPEC(sctx, BTRFS_SEND_A_CTIME, &ct);
+		TLV_GET_TIMESPEC(sctx, BTRFS_SEND_A_OTIME, &ot);
+		ret = sctx->ops->utimes2(path, &at, &mt, &ct, &ot, sctx->user);
 		break;
 	case BTRFS_SEND_C_END:
 		ret = 1;

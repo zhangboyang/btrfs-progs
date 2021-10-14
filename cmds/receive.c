@@ -967,6 +967,37 @@ out:
 	return ret;
 }
 
+static int process_utimes2(const char *path, struct timespec *at,
+			  struct timespec *mt, struct timespec *ct,
+			  struct timespec *ot, void *user)
+{
+	int ret = 0;
+	struct btrfs_receive *rctx = user;
+	char full_path[PATH_MAX];
+	struct timespec tv[2];
+
+	ret = path_cat_out(full_path, rctx->full_subvol_path, path);
+	if (ret < 0) {
+		error("utimes2: path invalid: %s", path);
+		goto out;
+	}
+
+	if (bconf.verbose >= 3)
+		fprintf(stderr, "utimes2 %s\n", path);
+
+	tv[0] = *at;
+	tv[1] = *mt;
+	ret = utimensat(AT_FDCWD, full_path, tv, AT_SYMLINK_NOFOLLOW);
+	if (ret < 0) {
+		ret = -errno;
+		error("utimes2 %s failed: %m", path);
+		goto out;
+	}
+
+out:
+	return ret;
+}
+
 static int process_update_extent(const char *path, u64 offset, u64 len,
 		void *user)
 {
@@ -1004,6 +1035,7 @@ static struct btrfs_send_ops send_ops = {
 	.chown = process_chown,
 	.utimes = process_utimes,
 	.update_extent = process_update_extent,
+	.utimes2 = process_utimes2,
 };
 
 static int do_receive(struct btrfs_receive *rctx, const char *tomnt,

@@ -57,6 +57,8 @@ struct btrfs_send {
 	u64 clone_sources_count;
 
 	char *root_path;
+	u32 proto;
+	u32 proto_supported;
 };
 
 static int get_root_id(struct btrfs_send *sctx, const char *path, u64 *root_id)
@@ -257,6 +259,13 @@ static int do_send(struct btrfs_send *send, u64 parent_root_id,
 	memset(&io_send, 0, sizeof(io_send));
 	io_send.send_fd = pipefd[1];
 	send->send_fd = pipefd[0];
+	io_send.flags = flags;
+
+	if (send->proto_supported > 1) {
+		/* Versioned stream supported, requesting default or specific number */
+		io_send.version = send->proto;
+		io_send.flags |= BTRFS_SEND_FLAG_VERSION;
+	}
 
 	if (!ret)
 		ret = pthread_create(&t_read, NULL, read_sent_data, send);
@@ -267,7 +276,6 @@ static int do_send(struct btrfs_send *send, u64 parent_root_id,
 		goto out;
 	}
 
-	io_send.flags = flags;
 	io_send.clone_sources = (__u64*)send->clone_sources;
 	io_send.clone_sources_count = send->clone_sources_count;
 	io_send.parent_root = parent_root_id;
@@ -275,6 +283,7 @@ static int do_send(struct btrfs_send *send, u64 parent_root_id,
 		io_send.flags |= BTRFS_SEND_FLAG_OMIT_STREAM_HEADER;
 	if (!is_last_subvol)
 		io_send.flags |= BTRFS_SEND_FLAG_OMIT_END_CMD;
+
 	ret = ioctl(subvol_fd, BTRFS_IOC_SEND, &io_send);
 	if (ret < 0) {
 		ret = -errno;
@@ -419,6 +428,33 @@ static void free_send_info(struct btrfs_send *sctx)
 	sctx->root_path = NULL;
 }
 
+static u32 get_sysfs_proto_supported(void)
+{
+	int fd;
+	int ret;
+	char buf[32] = {};
+	char *end = NULL;
+	u64 version;
+
+	fd = sysfs_open_file("features/send_stream_version");
+	if (fd < 0) {
+		/* No file is either no version support or old kernel with just v1 */
+		return 1;
+	}
+	ret = sysfs_read_file(fd, buf, sizeof(buf));
+	close(fd);
+	if (ret <= 0)
+		return 1;
+	version = strtoull(buf, &end, 10);
+	if (version == ULLONG_MAX && errno == ERANGE)
+		return 1;
+	if (version > U32_MAX) {
+		warning("sysfs/send_stream_version too big: %llu", version);
+		version = 1;
+	}
+	return version;
+}
+
 static const char * const cmd_send_usage[] = {
 	"btrfs send [-ve] [-p <parent>] [-c <clone-src>] [-f <outfile>] <subvol> [<subvol>...]",
 	"Send the subvolume(s) to stdout.",
@@ -447,6 +483,7 @@ static const char * const cmd_send_usage[] = {
 	"                 does not contain any file data and thus cannot be used",
 	"                 to transfer changes. This mode is faster and useful to",
 	"                 show the differences in metadata.",
+	"--proto N        request maximum protocol version N (default: highest supported by running kernel)",
 	"-v|--verbose     deprecated, alias for global -v option",
 	"-q|--quiet       deprecated, alias for global -q option",
 	HELPINFO_INSERT_GLOBALS,
@@ -472,6 +509,7 @@ static int cmd_send(const struct cmd_struct *cmd, int argc, char **argv)
 
 	memset(&send, 0, sizeof(send));
 	send.dump_fd = fileno(stdout);
+	send.proto = 0;
 	outname[0] = 0;
 
 	/*
@@ -487,11 +525,12 @@ static int cmd_send(const struct cmd_struct *cmd, int argc, char **argv)
 
 	optind = 0;
 	while (1) {
-		enum { GETOPT_VAL_SEND_NO_DATA = 256 };
+		enum { GETOPT_VAL_SEND_NO_DATA = 256, GETOPT_VAL_PROTO };
 		static const struct option long_options[] = {
 			{ "verbose", no_argument, NULL, 'v' },
 			{ "quiet", no_argument, NULL, 'q' },
 			{ "no-data", no_argument, NULL, GETOPT_VAL_SEND_NO_DATA },
+			{ "proto" , required_argument, NULL, GETOPT_VAL_PROTO },
 			{ NULL, 0, NULL, 0 }
 		};
 		int c = getopt_long(argc, argv, "vqec:f:i:p:", long_options, NULL);
@@ -580,6 +619,17 @@ static int cmd_send(const struct cmd_struct *cmd, int argc, char **argv)
 		case GETOPT_VAL_SEND_NO_DATA:
 			send_flags |= BTRFS_SEND_FLAG_NO_FILE_DATA;
 			break;
+		case GETOPT_VAL_PROTO: {
+			u64 tmp;
+
+			tmp = arg_strtou64(optarg);
+			if (tmp > U32_MAX) {
+				error("protocol version number too big %llu", tmp);
+				ret = 1;
+				goto out;
+			}
+			send.proto = tmp;
+			break; }
 		default:
 			usage_unknown_option(cmd, argv);
 		}
@@ -687,6 +737,18 @@ static int cmd_send(const struct cmd_struct *cmd, int argc, char **argv)
 	if ((send_flags & BTRFS_SEND_FLAG_NO_FILE_DATA) && bconf.verbose > 1)
 		if (bconf.verbose > 1)
 			fprintf(stderr, "Mode NO_FILE_DATA enabled\n");
+	send.proto_supported = get_sysfs_proto_supported();
+	if (send.proto_supported == 1) {
+		if (send.proto > send.proto_supported) {
+			error("requested version %u but kernel supports only %u",
+				send.proto, send.proto_supported);
+			ret = -EPROTO;
+			goto out;
+		}
+	}
+	if (bconf.verbose > 1)
+		fprintf(stderr, "Protocol version requested: %u (supported %u)\n",
+				send.proto, send.proto_supported);
 
 	for (i = optind; i < argc; i++) {
 		int is_first_subvol;

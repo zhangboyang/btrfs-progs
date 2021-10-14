@@ -312,6 +312,24 @@ static int print_utimes(const char *path, struct timespec *at,
 			  at_str, mt_str, ct_str);
 }
 
+static int print_utimes2(const char *path, struct timespec *at,
+			struct timespec *mt, struct timespec *ct,
+			struct timespec *ot, void *user)
+{
+	char at_str[TIME_STRING_MAX];
+	char mt_str[TIME_STRING_MAX];
+	char ct_str[TIME_STRING_MAX];
+	char ot_str[TIME_STRING_MAX];
+
+	if (sprintf_timespec(at, at_str, TIME_STRING_MAX - 1) < 0 ||
+	    sprintf_timespec(mt, mt_str, TIME_STRING_MAX - 1) < 0 ||
+	    sprintf_timespec(ct, ct_str, TIME_STRING_MAX - 1) < 0 ||
+	    sprintf_timespec(ot, ot_str, TIME_STRING_MAX - 1) < 0)
+		return -EINVAL;
+	return PRINT_DUMP(user, path, "utimes2", "atime=%s mtime=%s ctime=%s otime=%s",
+			  at_str, mt_str, ct_str, ot_str);
+}
+
 static int print_update_extent(const char *path, u64 offset, u64 len,
 			       void *user)
 {
@@ -340,5 +358,6 @@ struct btrfs_send_ops btrfs_print_send_ops = {
 	.chmod = print_chmod,
 	.chown = print_chown,
 	.utimes = print_utimes,
-	.update_extent = print_update_extent
+	.update_extent = print_update_extent,
+	.utimes2 = print_utimes2,
 };
