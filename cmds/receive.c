@@ -998,6 +998,52 @@ out:
 	return ret;
 }
 
+/* TODO: Copied from receive-dump.c */
+static int sprintf_timespec(struct timespec *ts, char *dest, int max_size)
+{
+	struct tm tm;
+	int ret;
+
+	if (!localtime_r(&ts->tv_sec, &tm)) {
+		error("failed to convert time %lld.%.9ld to local time",
+		      (long long)ts->tv_sec, ts->tv_nsec);
+		return -EINVAL;
+	}
+	ret = strftime(dest, max_size, "%FT%T%z", &tm);
+	if (ret == 0) {
+		error(
+		"time %lld.%ld is too long to convert into readable string",
+		      (long long)ts->tv_sec, ts->tv_nsec);
+		return -EINVAL;
+	}
+	return 0;
+}
+
+
+static int process_otime(const char *path, struct timespec *ot, void *user)
+{
+	int ret;
+	struct btrfs_receive *rctx = user;
+	char full_path[PATH_MAX];
+
+	ret = path_cat_out(full_path, rctx->full_subvol_path, path);
+	if (ret < 0) {
+		error("otime: path invalid: %s", path);
+		goto out;
+	}
+
+	if (bconf.verbose >= 3) {
+		char ot_str[128];
+
+		if (sprintf_timespec(ot, ot_str, sizeof(ot_str) - 1) < 0)
+			goto out;
+		fprintf(stderr, "otime %s\n", ot_str);
+	}
+
+out:
+	return 0;
+}
+
 static int process_update_extent(const char *path, u64 offset, u64 len,
 		void *user)
 {
@@ -1036,6 +1082,7 @@ static struct btrfs_send_ops send_ops = {
 	.utimes = process_utimes,
 	.update_extent = process_update_extent,
 	.utimes2 = process_utimes2,
+	.otime = process_otime,
 };
 
 static int do_receive(struct btrfs_receive *rctx, const char *tomnt,

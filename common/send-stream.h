@@ -57,6 +57,7 @@ struct btrfs_send_ops {
 	int (*utimes2)(const char *path, struct timespec *at,
 		      struct timespec *mt, struct timespec *ct,
 		      struct timespec *ot, void *user);
+	int (*otime)(const char *path, struct timespec *ot, void *user);
 };
 
 int btrfs_read_and_process_send_stream(int fd,

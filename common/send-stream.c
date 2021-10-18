@@ -460,6 +460,11 @@ static int read_and_process_cmd(struct btrfs_send_stream *sctx)
 		TLV_GET_TIMESPEC(sctx, BTRFS_SEND_A_OTIME, &ot);
 		ret = sctx->ops->utimes2(path, &at, &mt, &ct, &ot, sctx->user);
 		break;
+	case BTRFS_SEND_C_OTIME:
+		TLV_GET_STRING(sctx, BTRFS_SEND_A_PATH, &path);
+		TLV_GET_TIMESPEC(sctx, BTRFS_SEND_A_OTIME, &ot);
+		ret = sctx->ops->otime(path, &ot, sctx->user);
+		break;
 	case BTRFS_SEND_C_END:
 		ret = 1;
 		break;
