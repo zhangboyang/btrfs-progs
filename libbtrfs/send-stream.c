@@ -22,7 +22,7 @@
 #include "crypto/crc32c.h"
 
 struct btrfs_send_stream {
-	char read_buf[BTRFS_SEND_BUF_SIZE];
+	char read_buf[BTRFS_SEND_BUF_SIZE_V1];
 	int fd;
 
 	int cmd;
