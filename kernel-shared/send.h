@@ -20,15 +20,7 @@
 #ifndef __BTRFS_SEND_H__
 #define __BTRFS_SEND_H__
 
-#if BTRFS_FLAT_INCLUDES
 #include "kernel-shared/ctree.h"
-#else
-#include <btrfs/ctree.h>
-#endif /* BTRFS_FLAT_INCLUDES */
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #define BTRFS_SEND_STREAM_MAGIC "btrfs-stream"
 #define BTRFS_SEND_STREAM_VERSION 2
@@ -175,9 +167,5 @@ enum {
 	/* End */
 	BTRFS_SEND_A_MAX		= 31,
 };
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
