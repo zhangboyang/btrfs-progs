@@ -17,12 +17,12 @@
  */
 
 #include <unistd.h>
-#include "kernel-shared/send.h"
+#include "libbtrfs/send.h"
 #include "libbtrfs/send-stream.h"
 #include "crypto/crc32c.h"
 
 struct btrfs_send_stream {
-	char read_buf[BTRFS_SEND_BUF_SIZE_V1];
+	char read_buf[BTRFS_SEND_BUF_SIZE];
 	int fd;
 
 	int cmd;
