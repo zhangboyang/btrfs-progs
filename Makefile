@@ -191,6 +191,7 @@ objects = \
 	cmds/receive-dump.o	\
 	crypto/crc32c.o	\
 	crypto/hash.o	\
+	crypto/reed_solomon.o	\
 	crypto/xxhash.o	\
 	$(CRYPTO_OBJECTS)	\
 	libbtrfsutil/stubs.o	\

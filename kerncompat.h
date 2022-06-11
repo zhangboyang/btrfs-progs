@@ -195,6 +195,9 @@ do {								\
 	(m)->lock = 1;						\
 } while (0)
 
+#define DEFINE_MUTEX(mutexname) \
+	struct mutex mutexname = { .lock = 1 }
+
 static inline void mutex_lock(struct mutex *m)
 {
 	m->lock--;
@@ -314,6 +317,7 @@ static inline int IS_ERR_OR_NULL(const void *ptr)
  */
 #define kmalloc(x, y) malloc(x)
 #define kzalloc(x, y) calloc(1, x)
+#define kmalloc_array(x, y, z) reallocarray(NULL, x, y)
 #define kstrdup(x, y) strdup(x)
 #define kfree(x) free(x)
 #define vmalloc(x) malloc(x)
@@ -500,6 +504,10 @@ typedef u64 __bitwise __be64;
 #define cpu_to_le16(x) ((__force __le16)(u16)(x))
 #define le16_to_cpu(x) ((__force u16)(__le16)(x))
 #endif
+
+#define swab64 bswap_64
+#define swab32 bswap_32
+#define swab16 bswap_16
 
 struct __una_u16 { __le16 x; } __attribute__((__packed__));
 struct __una_u32 { __le32 x; } __attribute__((__packed__));
